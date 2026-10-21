@@ -101,6 +101,19 @@ begin
  from jsonb_to_recordset(p_cheques) x(cheque_no text,gl_code text,amount numeric,cheque_date date,cleared_date date,vendor text,description text,invoice_no text,source_key text)
  on conflict(financial_year_id,source_key) where source_key is not null do nothing;
 
+ if p_mode='replace' then
+   if (select count(*) from budgets where financial_year_id=p_financial_year)<>(p_counts->>'budgets')::int
+      or (select count(*) from actuals where financial_year_id=p_financial_year)<>(p_counts->>'actuals')::int
+      or (select count(*) from bank_transactions where financial_year_id=p_financial_year)<>(p_counts->>'bankTransactions')::int
+      or (select count(*) from cheques where financial_year_id=p_financial_year)<>(p_counts->>'cheques')::int
+      or round(coalesce((select sum(amount) from budgets where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'budget')::numeric,2)
+      or round(coalesce((select sum(amount) from actuals where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'actual')::numeric,2)
+      or round(coalesce((select sum(deposit) from bank_transactions where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'deposits')::numeric,2)
+      or round(coalesce((select sum(withdrawal) from bank_transactions where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'withdrawals')::numeric,2)
+      or round(coalesce((select sum(amount) from cheques where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'cheques')::numeric,2)
+   then raise exception 'post-import reconciliation failed; transaction rolled back'; end if;
+ end if;
+
  insert into import_runs(financial_year_id,file_name,file_fingerprint,mode,counts,totals,warnings,created_by)
  values(p_financial_year,p_file_name,p_fingerprint,p_mode,p_counts,p_totals,p_warnings,p_user) returning id into rid;
  insert into audit_log(user_id,action,entity,entity_id,after_data)
