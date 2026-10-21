@@ -33,9 +33,9 @@ export async function POST(req:Request){
   if(!glCodes.length)return NextResponse.json({error:"No valid GL codes found"},{status:400});
 
   const budgets=arr(d.budgets).map((x:any)=>({gl_code:text(x.gl_code,40),amount:money(x.amount),comments:text(x.comments),prior_budget:x.prior_budget==null?null:money(x.prior_budget),prior_actual:x.prior_actual==null?null:money(x.prior_actual)}));
-  const actuals=occurrenceKeys(arr(d.actuals).map((x:any)=>({date:String(x.date||""),gl_code:text(x.gl_code,40),amount:money(x.amount),description:text(x.description),school_month:x.school_month==null?null:Number(x.school_month)})),"actual",(x:any)=>[x.date,x.gl_code,x.amount,x.description,x.school_month]);
-  const bank=occurrenceKeys(arr(d.bankTransactions).map((x:any)=>({date:String(x.date||""),transaction:text(x.transaction,500),withdrawal:money(x.withdrawal),deposit:money(x.deposit),balance:x.balance==null?null:money(x.balance),gl_code:text(x.gl_code,40),description:text(x.description),amount:money(x.amount)})),"bank",(x:any)=>[x.date,x.transaction,x.withdrawal,x.deposit,x.balance,x.gl_code,x.description]);
-  const cheques=occurrenceKeys(arr(d.cheques).map((x:any)=>({cheque_no:text(x.cheque_no,80),gl_code:text(x.gl_code,40),amount:money(x.amount),cheque_date:String(x.cheque_date||""),cleared_date:x.cleared_date?String(x.cleared_date):null,vendor:text(x.vendor,300),description:text(x.description),invoice_no:text(x.invoice_no,100)})),"cheque",(x:any)=>[x.cheque_no,x.cheque_date,x.amount,x.gl_code,x.vendor,x.invoice_no]);
+  let actuals=occurrenceKeys(arr(d.actuals).map((x:any)=>({date:String(x.date||""),gl_code:text(x.gl_code,40),amount:money(x.amount),description:text(x.description),school_month:x.school_month==null?null:Number(x.school_month)})),"actual",(x:any)=>[x.date,x.gl_code,x.amount,x.description,x.school_month]);
+  let bank=occurrenceKeys(arr(d.bankTransactions).map((x:any)=>({date:String(x.date||""),transaction:text(x.transaction,500),withdrawal:money(x.withdrawal),deposit:money(x.deposit),balance:x.balance==null?null:money(x.balance),gl_code:text(x.gl_code,40),description:text(x.description),amount:money(x.amount)})),"bank",(x:any)=>[x.date,x.transaction,x.withdrawal,x.deposit,x.balance,x.gl_code,x.description]);
+  let cheques=occurrenceKeys(arr(d.cheques).map((x:any)=>({cheque_no:text(x.cheque_no,80),gl_code:text(x.gl_code,40),amount:money(x.amount),cheque_date:String(x.cheque_date||""),cleared_date:x.cleared_date?String(x.cleared_date):null,vendor:text(x.vendor,300),description:text(x.description),invoice_no:text(x.invoice_no,100)})),"cheque",(x:any)=>[x.cheque_no,x.cheque_date,x.amount,x.gl_code,x.vendor,x.invoice_no]);
 
   const errors:string[]=[];
   for(const x of budgets)if(!x.gl_code||!valid.has(x.gl_code))errors.push("Budget contains unknown GL "+(x.gl_code||"(blank)"));
@@ -46,12 +46,20 @@ export async function POST(req:Request){
 
   const outside=(v:string)=>v<fy.start_date||v>fy.end_date;
   const warnings=[...new Set(arr(d.warnings).map(String))];
-  const outActual=actuals.filter((x:any)=>outside(x.date)).length,outBank=bank.filter((x:any)=>outside(x.date)).length,outCheque=cheques.filter((x:any)=>outside(x.cheque_date)).length;
-  if(outActual)warnings.push(outActual+" actual entries are outside "+fy.start_date+" to "+fy.end_date);
-  if(outBank)warnings.push(outBank+" bank transactions are outside "+fy.start_date+" to "+fy.end_date);
-  if(outCheque)warnings.push(outCheque+" cheques are outside "+fy.start_date+" to "+fy.end_date);
+  const found={actuals:actuals.length,bankTransactions:bank.length,cheques:cheques.length};
+  const excluded={
+   actuals:actuals.filter((x:any)=>outside(x.date)).length,
+   bankTransactions:bank.filter((x:any)=>outside(x.date)).length,
+   cheques:cheques.filter((x:any)=>outside(x.cheque_date)).length
+  };
+  actuals=actuals.filter((x:any)=>!outside(x.date));
+  bank=bank.filter((x:any)=>!outside(x.date));
+  cheques=cheques.filter((x:any)=>!outside(x.cheque_date));
+  if(excluded.actuals)warnings.push(excluded.actuals+" out-of-year actual entries excluded.");
+  if(excluded.bankTransactions)warnings.push(excluded.bankTransactions+" out-of-year bank transactions excluded.");
+  if(excluded.cheques)warnings.push(excluded.cheques+" out-of-year cheques excluded.");
 
-  const counts={glCodes:glCodes.length,budgets:budgets.length,actuals:actuals.length,bankTransactions:bank.length,cheques:cheques.length};
+  const counts={glCodes:glCodes.length,budgets:budgets.length,actuals:actuals.length,bankTransactions:bank.length,cheques:cheques.length,found,excluded};
   const totals={
    budget:money(budgets.reduce((n:number,x:any)=>n+x.amount,0)),
    actual:money(actuals.reduce((n:number,x:any)=>n+x.amount,0)),
