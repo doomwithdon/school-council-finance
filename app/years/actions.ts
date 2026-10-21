@@ -21,9 +21,6 @@ export async function closeYear(f:FormData){
  const nextStart=shiftYear(year.start_date);
  const nextEnd=shiftYear(year.end_date);
 
- const {data:existing}=await db.from("financial_years").select("id,status").eq("label",nextLabel).maybeSingle();
- if(existing)throw new Error("Cannot close "+year.label+": "+nextLabel+" already exists. Resolve the existing financial year before closing.");
-
  const {error}=await db.rpc("close_financial_year",{p_year:id,p_next_label:nextLabel,p_next_start:nextStart,p_next_end:nextEnd});
  if(error)throw new Error(error.message);
  redirect("/?year="+encodeURIComponent(nextLabel));
