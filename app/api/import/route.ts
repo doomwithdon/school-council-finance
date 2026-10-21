@@ -69,3 +69,15 @@ export async function POST(req:Request){
   return NextResponse.json({ok:true,runId,financialYear:fy.label,mode,counts,totals,warnings});
  }catch(e:any){return NextResponse.json({error:e.message||"Import failed"},{status:500})}
 }
+
+
+export async function GET(){
+ try{
+  const session=serverDb();const {data:{user}}=await session.auth.getUser();
+  if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
+  const {data:profile}=await session.from("profiles").select("role").eq("id",user.id).single();
+  if(!["admin","treasurer"].includes(profile?.role))return NextResponse.json({error:"Read-only account"},{status:403});
+  const {data,error}=await session.from("import_runs").select("id,file_name,mode,status,counts,totals,warnings,created_at,financial_years(label)").order("created_at",{ascending:false}).limit(10);
+  if(error)throw error;return NextResponse.json({runs:data||[]});
+ }catch(e:any){return NextResponse.json({error:e.message||"Could not load import history"},{status:500})}
+}
