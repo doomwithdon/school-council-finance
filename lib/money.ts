@@ -1,0 +1,1 @@
+export const money=(n:number|null|undefined)=>new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(Number(n||0));
