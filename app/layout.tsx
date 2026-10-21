@@ -1,0 +1,3 @@
+import "./styles.css";
+export const metadata={title:"School Council Finance",description:"Budget, transaction and cheque management for school councils"};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><header><div><strong>School Council Finance</strong><span>St. Elizabeth Seton</span></div><nav><a href="/">Dashboard</a><a href="/import">Excel Import</a></nav></header><main>{children}</main></body></html>}
