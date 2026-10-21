@@ -7,6 +7,7 @@ const arr=(v:any)=>Array.isArray(v)?v:[];
 const money=(v:any)=>Number.isFinite(Number(v))?Math.round(Number(v)*100)/100:0;
 const hash=(v:any)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const key=(type:string,v:any)=>hash([type,...v]);
+const occurrenceKeys=(rows:any[],type:string,parts:(x:any)=>any[])=>{const seen=new Map<string,number>();return rows.map(x=>{const base=key(type,parts(x));const occurrence=(seen.get(base)||0)+1;seen.set(base,occurrence);return {...x,source_key:hash([base,occurrence])}})};
 const iso=(v:any)=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||""));
 const text=(v:any,n=500)=>v==null?null:String(v).trim().slice(0,n)||null;
 
@@ -32,9 +33,9 @@ export async function POST(req:Request){
   if(!glCodes.length)return NextResponse.json({error:"No valid GL codes found"},{status:400});
 
   const budgets=arr(d.budgets).map((x:any)=>({gl_code:text(x.gl_code,40),amount:money(x.amount),comments:text(x.comments),prior_budget:x.prior_budget==null?null:money(x.prior_budget),prior_actual:x.prior_actual==null?null:money(x.prior_actual)}));
-  const actuals=arr(d.actuals).map((x:any)=>({date:String(x.date||""),gl_code:text(x.gl_code,40),amount:money(x.amount),description:text(x.description),school_month:x.school_month==null?null:Number(x.school_month),source_key:key("actual",[x.date,x.gl_code,money(x.amount),text(x.description),x.school_month])}));
-  const bank=arr(d.bankTransactions).map((x:any)=>({date:String(x.date||""),transaction:text(x.transaction,500),withdrawal:money(x.withdrawal),deposit:money(x.deposit),balance:x.balance==null?null:money(x.balance),gl_code:text(x.gl_code,40),description:text(x.description),amount:money(x.amount),source_key:key("bank",[x.date,text(x.transaction),money(x.withdrawal),money(x.deposit),x.balance==null?null:money(x.balance),x.gl_code,text(x.description)])}));
-  const cheques=arr(d.cheques).map((x:any)=>({cheque_no:text(x.cheque_no,80),gl_code:text(x.gl_code,40),amount:money(x.amount),cheque_date:String(x.cheque_date||""),cleared_date:x.cleared_date?String(x.cleared_date):null,vendor:text(x.vendor,300),description:text(x.description),invoice_no:text(x.invoice_no,100),source_key:key("cheque",[x.cheque_no,x.cheque_date,money(x.amount),x.gl_code,text(x.vendor),text(x.invoice_no)])}));
+  const actuals=occurrenceKeys(arr(d.actuals).map((x:any)=>({date:String(x.date||""),gl_code:text(x.gl_code,40),amount:money(x.amount),description:text(x.description),school_month:x.school_month==null?null:Number(x.school_month)})),"actual",(x:any)=>[x.date,x.gl_code,x.amount,x.description,x.school_month]);
+  const bank=occurrenceKeys(arr(d.bankTransactions).map((x:any)=>({date:String(x.date||""),transaction:text(x.transaction,500),withdrawal:money(x.withdrawal),deposit:money(x.deposit),balance:x.balance==null?null:money(x.balance),gl_code:text(x.gl_code,40),description:text(x.description),amount:money(x.amount)})),"bank",(x:any)=>[x.date,x.transaction,x.withdrawal,x.deposit,x.balance,x.gl_code,x.description]);
+  const cheques=occurrenceKeys(arr(d.cheques).map((x:any)=>({cheque_no:text(x.cheque_no,80),gl_code:text(x.gl_code,40),amount:money(x.amount),cheque_date:String(x.cheque_date||""),cleared_date:x.cleared_date?String(x.cleared_date):null,vendor:text(x.vendor,300),description:text(x.description),invoice_no:text(x.invoice_no,100)})),"cheque",(x:any)=>[x.cheque_no,x.cheque_date,x.amount,x.gl_code,x.vendor,x.invoice_no]);
 
   const errors:string[]=[];
   for(const x of budgets)if(!x.gl_code||!valid.has(x.gl_code))errors.push("Budget contains unknown GL "+(x.gl_code||"(blank)"));
