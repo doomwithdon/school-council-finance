@@ -33,18 +33,20 @@ test("tenant GL migration remains approval gated",()=>{
  assert.match(s,/foreign key\(organization_id,gl_code\)/);
 });
 
-test("legacy global administration is disabled for multi-organization mode",()=>{
- for(const [path,functions] of [
-  ["app/users/actions.ts",["addUser","updateUser","resetPassword","deleteUser"]],
-  ["app/gl-codes/actions.ts",["addGlCode","updateGlCode","deleteGlCode"]]
- ]){
-  const s=read(path);
-  for(const name of functions){
-   const start=s.indexOf("export async function "+name+"(");
-   assert.ok(start>=0,name+" is missing");
-   assert.match(s.slice(start,start+250),/if\(multiOrgEnabled\(\)\)throw new Error\(/);
-  }
+test("user administration remains disabled and GL actions are tenant scoped",()=>{
+ const users=read("app/users/actions.ts");
+ for(const name of ["addUser","updateUser","resetPassword","deleteUser"]){
+  const start=users.indexOf("export async function "+name+"(");
+  assert.ok(start>=0);
+  assert.match(users.slice(start,start+250),/if\\(multiOrgEnabled\\(\\)\\)throw new Error\\(/);
  }
+ const gl=read("app/gl-codes/actions.ts");
+ assert.match(gl,/organization_id:org/);
+ assert.match(gl,/eq\\("organization_id",org\\)/);
+ const page=read("app/gl-codes/page.tsx");
+ assert.match(page,/eq\\("organization_id",organization.id\\)/);
+ const members=read("app/users/page.tsx");
+ assert.match(members,/if\\(multiOrgEnabled\\(\\)\\)/);
 });
 test("tenant import backups never copy another council's fundraisers",()=>{
  const s=read("supabase/migrations/011_tenant_atomic_import_DRAFT.sql");
