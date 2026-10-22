@@ -21,8 +21,9 @@ export async function POST(req:Request){
   if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
   const {data:profile}=await session.from("profiles").select("role").eq("id",user.id).single();
   if(!["admin","treasurer"].includes(profile?.role))return NextResponse.json({error:"Read-only account"},{status:403});
+  const {data:fy,error:yearError}=await session.from("financial_years").select("*").eq("label",d.financialYear).single();
+  if(yearError&&yearError.code!=="PGRST116")throw yearError;
   const db=admin();
-  const {data:fy}=await db.from("financial_years").select("*").eq("label",d.financialYear).single();
   if(!fy)return NextResponse.json({error:"Financial year not found"},{status:400});
   const mode=d.mode==="merge"?"merge":"replace";
   if(fy.status==="closed"&&(mode!=="replace"||d.overwriteConfirmation!=="OVERWRITE "+fy.label))
