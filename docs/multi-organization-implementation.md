@@ -54,3 +54,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - `010_tenant_gl_key_cutover_DRAFT.sql` changes the GL primary key to `(organization_id,code)` and replaces dependent foreign keys with composite tenant-safe foreign keys.
 - It is **gated and must not be run** until every caller that assumes `gl_codes(code)` is globally unique is updated, including atomic Excel import and GL management actions.
 - Not yet completed: tenant-specific year label constraints, atomic import replacement, backup restore, RLS cutover, tenant-scoped pages/actions, and end-to-end tests.
+
+## Stage 2I — tenant atomic importer draft
+- `011_tenant_atomic_import_DRAFT.sql` introduces a separate, gated tenant-specific import RPC draft. It is **not deployed, not tested and not ready to enable**.
+- The draft requires organization ownership and an authorized membership, and tags imported data, backups, snapshots, and audit entries with the tenant.
+- Security review required: service-role callers must derive actor identity from the verified session, not arbitrary payloads; test GL and year unique indexes, conflict clauses, row-level tenant integrity, idempotency and rollback; inspect generated SQL against staging schema.
+- Legacy POST remains blocked under the multi-org feature flag. Do not enable the draft RPC or switch the API to it before review and testing.
