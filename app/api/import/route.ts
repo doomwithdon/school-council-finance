@@ -2,6 +2,7 @@ import {createHash} from "crypto";
 import {NextResponse} from "next/server";
 import {serverDb} from "../../../lib/supabase-server";
 import {admin} from "../../../lib/supabase-admin";
+import {multiOrgEnabled} from "../../../lib/organization";
 
 const arr=(v:any)=>Array.isArray(v)?v:[];
 const money=(v:any)=>Number.isFinite(Number(v))?Math.round(Number(v)*100)/100:0;
@@ -13,6 +14,7 @@ const text=(v:any,n=500)=>v==null?null:String(v).trim().slice(0,n)||null;
 
 export async function POST(req:Request){
  try{
+  if(multiOrgEnabled())return NextResponse.json({error:"Import unavailable until tenant-safe importer is deployed"},{status:503});
   const d=await req.json();
   const session=serverDb();
   const {data:{user}}=await session.auth.getUser();
