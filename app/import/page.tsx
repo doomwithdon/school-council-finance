@@ -12,7 +12,34 @@ export default function ImportPage(){
  const included=data?{actuals:data.actuals.filter(x=>!outside(x.date)),bank:data.bankTransactions.filter(x=>!outside(x.date)),cheques:data.cheques.filter(x=>!outside(x.cheque_date))}:null;
  const excluded=data?{actuals:data.actuals.length-(included?.actuals.length||0),bank:data.bankTransactions.length-(included?.bank.length||0),cheques:data.cheques.length-(included?.cheques.length||0)}:null;
  const totals=data?{budget:data.budgets.reduce((n,x)=>n+Number(x.amount||0),0),actual:(included?.actuals||[]).reduce((n,x)=>n+Number(x.amount||0),0),deposits:(included?.bank||[]).reduce((n,x)=>n+Number(x.deposit||0),0),withdrawals:(included?.bank||[]).reduce((n,x)=>n+Number(x.withdrawal||0),0),cheques:(included?.cheques||[]).reduce((n,x)=>n+Number(x.amount||0),0)}:null;
- async function commit(){if(!data||data.errors.length||!year||(closed&&confirm!==phrase)||(mismatch&&mismatchConfirm!==mismatchPhrase))return;setBusy(true);setMessage("");const r=await fetch("/api/import",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...data,fileName,financialYear:year,mode:closed?"replace":mode,overwriteConfirmation:confirm,yearMismatchConfirmation:mismatchConfirm})});const j=await r.json();if(r.ok)fetch("/api/import").then(x=>x.json()).then(x=>setRuns(x.runs||[]));setMessage(r.ok?"Import successful. "+j.counts.actuals+" actuals, "+j.counts.bankTransactions+" bank transactions and "+j.counts.cheques+" cheques committed atomically. Import ID: "+j.runId:j.error);setBusy(false)}
+ async function commit(){
+  if(!data||data.errors.length||!year||(closed&&confirm!==phrase)||(mismatch&&mismatchConfirm!==mismatchPhrase))return;
+  setBusy(true);setMessage("");
+  try{
+   const payload={...data,fileName,financialYear:year,mode:closed?"replace":mode,overwriteConfirmation:confirm,yearMismatchConfirmation:mismatchConfirm};
+   const preflight=await fetch("/api/import/preflight",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+    financialYear:year,mode:payload.mode,overwriteConfirmation:confirm,
+    detectedFinancialYear:data.detectedFinancialYear,yearMismatchConfirmation:mismatchConfirm
+   })});
+   // 404 with the explicit disabled message means legacy single-org mode.
+   // Any other preflight error must fail closed rather than attempting a write.
+   if(preflight.status!==404){
+    const check=await preflight.json();
+    if(!preflight.ok){setMessage(check.error||"Import authorization check failed");return;}
+    setMessage(check.message||"Tenant import preflight passed. Imports remain disabled pending database cutover.");
+    return;
+   }
+   const preflightBody=await preflight.json();
+   if(preflightBody.error!=="Tenant preflight is disabled"){
+    setMessage(preflightBody.error||"Import destination validation failed");return;
+   }
+   const r=await fetch("/api/import",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+   const j=await r.json();
+   if(r.ok)fetch("/api/import").then(x=>x.json()).then(x=>setRuns(x.runs||[]));
+   setMessage(r.ok?"Import successful. "+j.counts.actuals+" actuals, "+j.counts.bankTransactions+" bank transactions and "+j.counts.cheques+" cheques committed atomically. Import ID: "+j.runId:j.error||"Import failed");
+  }catch(e){setMessage("Import could not be completed. Please retry.");}
+  finally{setBusy(false);}
+ }
  return <><h1>Import council Excel workbook</h1><p className="muted">Preview first. Nothing changes in the database until you confirm. Replace imports create an automatic backup and protective budget snapshot.</p><section className="panel">
  <div className="formgrid"><label>Destination year <select value={year} onChange={e=>{setYear(e.target.value);setConfirm("");setMismatchConfirm("")}}><option value="">Select year</option>{years.map(x=><option key={x.id} value={x.label}>{x.label}{x.status==="closed"?" (Closed)":""}</option>)}</select></label>{!closed&&<label>Import mode <select value={mode} onChange={e=>setMode(e.target.value as any)}><option value="replace">Replace year from workbook</option><option value="merge">Merge new records</option></select></label>}<input type="file" accept=".xlsx,.xls" onChange={e=>e.target.files?.[0]&&preview(e.target.files[0])}/></div>
  {data&&<><p><strong>File:</strong> {fileName}<br/><strong>Workbook year:</strong> {data.detectedFinancialYear||"Not detected"}<br/><strong>Destination:</strong> {year||"Select a year"} {closed&&<span className="warn">· CLOSED</span>}</p>
