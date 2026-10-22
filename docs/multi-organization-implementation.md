@@ -77,3 +77,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - `npm run test:tenant-guards` runs dependency-free Node tests for legacy import blocking, preflight read-only scope, draft importer predicates, and GL migration gates.
 - These are static source checks, **not** a replacement for staging SQL execution, RLS tests, or authenticated cross-tenant API tests.
 - Before production cutover, verify a council member cannot access, import, overwrite, or close another organization's financial year; verify rollback and financial reconciliation in staging.
+
+## Stage 2N — authenticated staging isolation test
+- Added `tests/tenant-isolation.staging.test.cjs`, invoked by `npm run test:tenant-staging`.
+- Requires separate staging Supabase project and two non-privileged test accounts belonging to different active organizations. Configure `STAGING_SUPABASE_URL`, `STAGING_SUPABASE_ANON_KEY`, `STAGING_COUNCIL_A_EMAIL`, `STAGING_COUNCIL_A_PASSWORD`, `STAGING_COUNCIL_B_EMAIL`, `STAGING_COUNCIL_B_PASSWORD` in a secure environment (never commit secrets).
+- Read-only checks ensure neither council can query rows tagged with the other's organization across twelve finance tables.
+- This does not test unauthorized mutations, RPC privilege escalation, or migration compatibility. Seed distinct staging records in both councils first, then expand tests to cover writes and rollback. Do not run against production.
