@@ -30,3 +30,10 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - `app/layout.tsx` integrates the component in the authenticated header.
 - **DO NOT enable `MULTI_ORG_CUTOVER_ENABLED`** until migration 009, tenant-aware application queries, RPCs, imports, backup restores, membership role checks and end-to-end tests are complete. The existing global role checks in `lib/auth.ts` are not tenant-safe.
 - Existing single-organization deployments need no new environment variables; flag defaults off.
+
+## Stage 2E — partial app hardening (committed, flag off)
+- `lib/auth.ts` resolves role from active membership when enabled.
+- `lib/year.ts` scopes financial-year helpers to active organization.
+- `app/api/export/route.ts` scopes year, GL and fundraiser entry lookup and export branding. Finance rows are year-filtered; RLS remains mandatory.
+- `app/backup/actions.ts` blocks both legacy full-database backup and restore when multi-org mode is enabled, avoiding global destructive operations.
+- **Not complete:** import API, all page/actions, SECURITY DEFINER functions, financial-year close, safe tenant backup/restore, tenant-specific GL uniqueness and integration tests. Keep flag off and do not run cutover migrations.
