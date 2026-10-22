@@ -84,10 +84,10 @@ begin
  on conflict(financial_year_id,source_key) where source_key is not null do nothing;
 
  if p_mode='replace' then
-   if (select count(*) from budgets where financial_year_id=p_financial_year)<>(p_counts->>'budgets')::int
-      or (select count(*) from actuals where financial_year_id=p_financial_year)<>(p_counts->>'actuals')::int
-      or (select count(*) from bank_transactions where financial_year_id=p_financial_year)<>(p_counts->>'bankTransactions')::int
-      or (select count(*) from cheques where financial_year_id=p_financial_year)<>(p_counts->>'cheques')::int
+   if (select count(*) from budgets where financial_year_id=p_financial_year and organization_id=p_organization)<>(p_counts->>'budgets')::int
+      or (select count(*) from actuals where financial_year_id=p_financial_year and organization_id=p_organization)<>(p_counts->>'actuals')::int
+      or (select count(*) from bank_transactions where financial_year_id=p_financial_year and organization_id=p_organization)<>(p_counts->>'bankTransactions')::int
+      or (select count(*) from cheques where financial_year_id=p_financial_year and organization_id=p_organization)<>(p_counts->>'cheques')::int
       or round(coalesce((select sum(amount) from budgets where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'budget')::numeric,2)
       or round(coalesce((select sum(amount) from actuals where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'actual')::numeric,2)
       or round(coalesce((select sum(deposit) from bank_transactions where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'deposits')::numeric,2)
