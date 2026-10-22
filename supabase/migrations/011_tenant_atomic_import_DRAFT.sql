@@ -51,7 +51,7 @@ begin
        'actuals',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from actuals t where financial_year_id=p_financial_year and organization_id=p_organization),
        'bank_transactions',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from bank_transactions t where financial_year_id=p_financial_year and organization_id=p_organization),
        'cheques',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from cheques t where financial_year_id=p_financial_year and organization_id=p_organization),
-       'fundraisers',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from fundraisers t where financial_year_id=p_financial_year)
+       'fundraisers',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from fundraisers t where financial_year_id=p_financial_year and organization_id=p_organization)
      )
    );
    insert into database_backups(organization_id,label,created_by,payload) values(p_organization,'Automatic backup before Excel replace of '||fy.label,p_user,backup_payload);
