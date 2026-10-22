@@ -66,3 +66,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - The endpoint uses only the user-scoped Supabase client, returns `writeEnabled:false`, and does not execute imports or use service-role credentials.
 - The endpoint is available only when `MULTI_ORG_CUTOVER_ENABLED=true`, which must remain disabled in production until coordinated RLS/database testing is complete.
 - Remaining: validate in staging, secure the SQL import function, integrate the preflight with the upload UI, test negative cross-tenant scenarios, and implement tenant-safe writes.
+
+## Stage 2L — Excel UI preflight integration
+- The Excel import page calls `POST /api/import/preflight` before attempting an import.
+- An explicit `Tenant preflight is disabled` 404 response preserves legacy single-organization importing; any other error fails closed.
+- In multi-org mode, the preflight result is displayed but **no write** is performed. The legacy import POST remains blocked.
+- No build, staging validation, or database migrations have been executed for this stage. Continue to keep the multi-org feature disabled in production.
