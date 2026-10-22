@@ -29,6 +29,11 @@ test("two authenticated councils cannot read each other's financial data",async(
  const a=await actor("STAGING_COUNCIL_A");
  const b=await actor("STAGING_COUNCIL_B");
  assert.notEqual(a.org,b.org,"Accounts must belong to different active organizations");
+ for(const who of [a,b]){
+  const {data,error}=await who.db.from("financial_years").select("id").eq("organization_id",who.org).limit(1);
+  assert.ifError(error);
+  assert.ok(data?.length,"Both staging organizations must have a visible financial year");
+ }
  for(const [who,other] of [[a,b],[b,a]]){
   for(const table of ["financial_years","gl_codes","budgets","actuals",
    "bank_transactions","cheques","fundraisers","fundraiser_entries",
