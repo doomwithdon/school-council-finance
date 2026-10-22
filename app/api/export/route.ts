@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { serverDb } from "../../../lib/supabase-server";
+import {getOrganizationContext,multiOrgEnabled} from "../../../lib/organization";
 
 const n=(v:any)=>Number(v||0);
 const safe=(v:any)=>v==null?"":v;
@@ -10,10 +11,13 @@ export async function GET(req:Request){
   const db=serverDb();
   const {data:{user}}=await db.auth.getUser();
   if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
+  const orgContext=multiOrgEnabled()?await getOrganizationContext(user.id):null;
+  const organizationId=orgContext?.active.id;
 
   const url=new URL(req.url);
   const label=url.searchParams.get("year");
   let q=db.from("financial_years").select("*");
+  if(organizationId)q=q.eq("organization_id",organizationId);
   if(label)q=q.eq("label",label);
   else q=q.eq("status","open").order("start_date",{ascending:false}).limit(1);
   const {data:fy,error:fyError}=await q.limit(1).maybeSingle();
@@ -34,8 +38,8 @@ export async function GET(req:Request){
    db.from("bank_transactions").select("*").eq("financial_year_id",fy.id).order("date"),
    db.from("cheques").select("*").eq("financial_year_id",fy.id).order("cheque_date"),
    db.from("fundraisers").select("*").eq("financial_year_id",fy.id).order("event_date"),
-   db.from("fundraiser_entries").select("*"),
-   db.from("gl_codes").select("*").order("code")
+   organizationId?db.from("fundraiser_entries").select("*").eq("organization_id",organizationId):db.from("fundraiser_entries").select("*"),
+   organizationId?db.from("gl_codes").select("*").eq("organization_id",organizationId).order("code"):db.from("gl_codes").select("*").order("code")
   ]);
   const firstError=bErr||aErr||tErr||cErr||fErr||eErr||gErr;if(firstError)throw firstError;
 
@@ -87,7 +91,7 @@ export async function GET(req:Request){
 
   const wb=XLSX.utils.book_new();
   const summary=XLSX.utils.aoa_to_sheet([
-   ["St. Elizabeth Seton School Council","Financial Year Export"],
+   [orgContext?.active.name||"St. Elizabeth Seton School Council","Financial Year Export"],
    ["Financial Year",fy.label],
    ["Period",fy.start_date+" to "+fy.end_date],
    ["Status",fy.status],
@@ -125,7 +129,7 @@ export async function GET(req:Request){
   add("Fundraisers",fundraiserRows,[28,13,13,14,14,42]);
 
   const buf=XLSX.write(wb,{type:"buffer",bookType:"xlsx"});
-  const filename="Seton-Council-Finance-"+fy.label+".xlsx";
+  const filename=(orgContext?.active.name||"Seton-Council").replace(/[^a-zA-Z0-9_-]+/g,"-").slice(0,60)+"-Finance-"+fy.label+".xlsx";
   return new NextResponse(buf,{
    status:200,
    headers:{
