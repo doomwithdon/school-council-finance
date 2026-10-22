@@ -2,15 +2,15 @@ import { requireWriter } from "../../lib/auth";
 import { addGlCode, deleteGlCode, updateGlCode } from "./actions";
 
 export default async function GlCodesPage(){
- const {db}=await requireWriter();
- const {data:codes,error}=await db.from("gl_codes").select("*").order("code");
+ const {db,organization}=await requireWriter();
+ const {data:codes,error}=await (organization?db.from("gl_codes").select("*").eq("organization_id",organization.id):db.from("gl_codes").select("*")).order("code");
  if(error)throw error;
 
  const usage=await Promise.all((codes||[]).map(async (g:any)=>{
   const tables=["budgets","actuals","bank_transactions","cheques","fundraiser_entries"] as const;
   let count=0;
   for(const t of tables){
-   const {count:c}=await db.from(t).select("*",{count:"exact",head:true}).eq("gl_code",g.code);
+   const {count:c}=await (organization?db.from(t).select("*",{count:"exact",head:true}).eq("gl_code",g.code).eq("organization_id",organization.id):db.from(t).select("*",{count:"exact",head:true}).eq("gl_code",g.code));
    count+=c||0;
   }
   return [g.code,count] as const;
