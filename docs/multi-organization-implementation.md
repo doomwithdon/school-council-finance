@@ -60,3 +60,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - The draft requires organization ownership and an authorized membership, and tags imported data, backups, snapshots, and audit entries with the tenant.
 - Security review required: service-role callers must derive actor identity from the verified session, not arbitrary payloads; test GL and year unique indexes, conflict clauses, row-level tenant integrity, idempotency and rollback; inspect generated SQL against staging schema.
 - Legacy POST remains blocked under the multi-org feature flag. Do not enable the draft RPC or switch the API to it before review and testing.
+
+## Stage 2K — read-only import preflight
+- Added `POST /api/import/preflight` to verify the authenticated actor, active organization finance role, organization-owned financial year, and closed-year / workbook mismatch confirmations.
+- The endpoint uses only the user-scoped Supabase client, returns `writeEnabled:false`, and does not execute imports or use service-role credentials.
+- The endpoint is available only when `MULTI_ORG_CUTOVER_ENABLED=true`, which must remain disabled in production until coordinated RLS/database testing is complete.
+- Remaining: validate in staging, secure the SQL import function, integrate the preflight with the upload UI, test negative cross-tenant scenarios, and implement tenant-safe writes.
