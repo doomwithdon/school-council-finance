@@ -22,3 +22,11 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 8. Implement organization switching and platform admin organization creation, then tenant-aware user management.
 9. Negative tests with two organizations and a multi-member user with different roles, including cross-org ID guessing and forged import payloads.
 10. Deploy schema and app together only after tests pass; reconcile Seton totals against the backup.
+
+## Stage 2D — application integration (prepared, disabled)
+- `lib/organization.ts` resolves active organization and memberships when `MULTI_ORG_CUTOVER_ENABLED=true`.
+- `components/OrganizationSwitcher.tsx` displays the organization and membership role, and offers a switch form for multi-organization members.
+- `app/organizations/actions.ts` calls the membership-validated `switch_organization` RPC.
+- `app/layout.tsx` integrates the component in the authenticated header.
+- **DO NOT enable `MULTI_ORG_CUTOVER_ENABLED`** until migration 009, tenant-aware application queries, RPCs, imports, backup restores, membership role checks and end-to-end tests are complete. The existing global role checks in `lib/auth.ts` are not tenant-safe.
+- Existing single-organization deployments need no new environment variables; flag defaults off.
