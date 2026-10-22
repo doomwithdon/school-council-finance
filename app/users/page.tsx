@@ -1,9 +1,15 @@
 import { requireWriter } from "../../lib/auth";
 import { admin } from "../../lib/supabase-admin";
+import {multiOrgEnabled} from "../../lib/organization";
 import { addUser, deleteUser, resetPassword, updateUser } from "./actions";
 
 export default async function UsersPage(){
- await requireWriter();
+ const {db,organization}=await requireWriter();
+ if(multiOrgEnabled()){
+  const {data,error}=await db.from("organization_memberships").select("user_id,role").eq("organization_id",organization!.id);
+  if(error)throw error;
+  return <><h1>Council members</h1><p className="muted">Member administration is temporarily read-only during the tenant security cutover.</p><section className="panel"><table><thead><tr><th>Member ID</th><th>Role</th></tr></thead><tbody>{data?.map(m=><tr key={m.user_id}><td>{m.user_id}</td><td>{m.role}</td></tr>)}</tbody></table></section></>;
+ }
  const a=admin();
  const {data:profiles,error}=await a.from("profiles").select("*").order("created_at",{ascending:true});
  if(error)throw error;
