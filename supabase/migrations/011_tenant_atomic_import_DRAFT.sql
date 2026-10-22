@@ -43,24 +43,24 @@ begin
  ) then raise exception 'import contains unknown GL codes'; end if;
 
  if p_mode='replace' then
-   select coalesce(jsonb_agg(to_jsonb(b) order by b.gl_code),'[]'::jsonb) into old_budget from budgets b where financial_year_id=p_financial_year;
+   select coalesce(jsonb_agg(to_jsonb(b) order by b.gl_code),'[]'::jsonb) into old_budget from budgets b where financial_year_id=p_financial_year and organization_id=p_organization;
    backup_payload=jsonb_build_object(
      'version',2,'type','pre_excel_replace','financial_year',to_jsonb(fy),'created_at',now(),
      'tables',jsonb_build_object(
-       'budgets',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from budgets t where financial_year_id=p_financial_year),
-       'actuals',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from actuals t where financial_year_id=p_financial_year),
-       'bank_transactions',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from bank_transactions t where financial_year_id=p_financial_year),
-       'cheques',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from cheques t where financial_year_id=p_financial_year),
+       'budgets',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from budgets t where financial_year_id=p_financial_year and organization_id=p_organization),
+       'actuals',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from actuals t where financial_year_id=p_financial_year and organization_id=p_organization),
+       'bank_transactions',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from bank_transactions t where financial_year_id=p_financial_year and organization_id=p_organization),
+       'cheques',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from cheques t where financial_year_id=p_financial_year and organization_id=p_organization),
        'fundraisers',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from fundraisers t where financial_year_id=p_financial_year)
      )
    );
    insert into database_backups(organization_id,label,created_by,payload) values(p_organization,'Automatic backup before Excel replace of '||fy.label,p_user,backup_payload);
    insert into budget_snapshots(organization_id,snapshot_date,label,created_by,financial_year_id,data,snapshot_kind)
    values(p_organization,current_date,'Pre-import '||fy.label,p_user,p_financial_year,old_budget,'pre_import');
-   delete from cheques where financial_year_id=p_financial_year;
-   delete from bank_transactions where financial_year_id=p_financial_year;
-   delete from actuals where financial_year_id=p_financial_year;
-   delete from budgets where financial_year_id=p_financial_year;
+   delete from cheques where financial_year_id=p_financial_year and organization_id=p_organization;
+   delete from bank_transactions where financial_year_id=p_financial_year and organization_id=p_organization;
+   delete from actuals where financial_year_id=p_financial_year and organization_id=p_organization;
+   delete from budgets where financial_year_id=p_financial_year and organization_id=p_organization;
  end if;
 
  insert into budgets(organization_id,gl_code,amount,comments,prior_budget,prior_actual,financial_year_id)
@@ -88,11 +88,11 @@ begin
       or (select count(*) from actuals where financial_year_id=p_financial_year)<>(p_counts->>'actuals')::int
       or (select count(*) from bank_transactions where financial_year_id=p_financial_year)<>(p_counts->>'bankTransactions')::int
       or (select count(*) from cheques where financial_year_id=p_financial_year)<>(p_counts->>'cheques')::int
-      or round(coalesce((select sum(amount) from budgets where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'budget')::numeric,2)
-      or round(coalesce((select sum(amount) from actuals where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'actual')::numeric,2)
-      or round(coalesce((select sum(deposit) from bank_transactions where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'deposits')::numeric,2)
-      or round(coalesce((select sum(withdrawal) from bank_transactions where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'withdrawals')::numeric,2)
-      or round(coalesce((select sum(amount) from cheques where financial_year_id=p_financial_year),0),2)<>round((p_totals->>'cheques')::numeric,2)
+      or round(coalesce((select sum(amount) from budgets where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'budget')::numeric,2)
+      or round(coalesce((select sum(amount) from actuals where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'actual')::numeric,2)
+      or round(coalesce((select sum(deposit) from bank_transactions where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'deposits')::numeric,2)
+      or round(coalesce((select sum(withdrawal) from bank_transactions where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'withdrawals')::numeric,2)
+      or round(coalesce((select sum(amount) from cheques where financial_year_id=p_financial_year and organization_id=p_organization),0),2)<>round((p_totals->>'cheques')::numeric,2)
    then raise exception 'post-import reconciliation failed; transaction rolled back'; end if;
  end if;
 
