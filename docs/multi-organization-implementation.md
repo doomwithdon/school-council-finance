@@ -72,3 +72,8 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - An explicit `Tenant preflight is disabled` 404 response preserves legacy single-organization importing; any other error fails closed.
 - In multi-org mode, the preflight result is displayed but **no write** is performed. The legacy import POST remains blocked.
 - No build, staging validation, or database migrations have been executed for this stage. Continue to keep the multi-org feature disabled in production.
+
+## Stage 2M — static tenant regression tests
+- `npm run test:tenant-guards` runs dependency-free Node tests for legacy import blocking, preflight read-only scope, draft importer predicates, and GL migration gates.
+- These are static source checks, **not** a replacement for staging SQL execution, RLS tests, or authenticated cross-tenant API tests.
+- Before production cutover, verify a council member cannot access, import, overwrite, or close another organization's financial year; verify rollback and financial reconciliation in staging.
