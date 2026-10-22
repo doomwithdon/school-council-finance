@@ -1,22 +1,24 @@
-# Multi-organization implementation — staged rollout
+# Multi-organization staged rollout
 
-**Status:** Stage 1 migration authored, NOT executed. Multi-organization accounting is NOT active. Do not add a second live organization yet.
+## Status
+- Stage 1: `006_organization_identity_foundation.sql` authored, not applied by ChatGPT.
+- Stage 2A: `007_backfill_organization_ids.sql` authored, not applied by ChatGPT.
+- **Multi-tenant isolation and organization management are not enabled.**
+- Existing Seton accounting remains single-organization until a coordinated cutover.
 
-## Stage 1 (prepared)
-Migration `006_organization_identity_foundation.sql` creates organizations, memberships and a separate platform_admins table with RLS. It inserts the existing Seton organization and copies existing user roles into memberships. It does not touch existing accounting records, legacy roles or finance RLS. The platform administrator must be explicitly assigned after checking the user UUID.
+## Stage 2A behavior
+Adds `organization_id` to all accounting, year, GL, backup, audit, snapshot and import tables; tags legacy records as Seton; validates non-null tagging and creates lookup indexes. Temporary Seton defaults preserve existing inserts and must be removed during cutover.
 
-## Stage 2 (required before enabling multiple organizations)
-- Tenant-scope all finance tables and their foreign keys: financial_years, gl_codes, budgets, actuals, bank_transactions, cheques, fundraisers, fundraiser_entries, snapshots, import_runs, database_backups, audit_log.
-- Backfill all existing records into Seton before enforcing NOT NULL.
-- Replace globally unique financial-year labels and GL code keys with tenant-specific uniqueness and safe composite references.
-- Replace permissive global finance RLS with membership-based tenant RLS. Tenant membership must be checked server-side; never trust a client-selected org ID.
-- Replace role authorization using profiles.role with membership role for the selected organization.
-- Rewrite security-definer RPCs (close year, snapshots, Excel import) to validate the selected tenant, record ownership and role.
-- Rewrite backup restore: current implementation deletes all finance rows and must never run after introducing multiple tenants without tenant scoping.
-- Restrict service-role Excel import and export to a validated tenant; include tenant in fingerprint and import audit.
-- Build platform admin organization management, organization switcher, and organization membership administration.
-- Add cross-tenant tests for UUID guessing, read/write, exports, imports, year closing, snapshots, backups and user administration.
-- Keep a verified pre-migration database backup and compare Seton totals after migration.
+The migration is intentionally not a tenant-isolation release. Existing globally permissive RLS, unique keys, RPCs, import and restore routes still require replacement. **Do not onboard other organizations at this stage.**
 
-## Release gate
-**Do not activate organization creation for end users until Stage 2 has passed tenant isolation tests.**
+## Critical cutover checklist
+1. Verified production backup and staging test of 006 and 007.
+2. Replace global `gl_codes.code` primary key and its foreign keys with tenant-aware keys; replace financial-year label uniqueness with (organization_id,label).
+3. Composite tenant-aware foreign keys for all financial-year, GL and fundraiser references.
+4. Remove temporary Seton defaults, enforce tenant IDs on all new writes, and migrate role checks from profiles to organization memberships.
+5. Replace all permissive finance RLS policies and SECURITY DEFINER RPCs, including snapshot/restore, close-year and atomic import.
+6. Replace full-table backup restore with transactional, tenant-scoped restore. Validate organization membership even for service-role operations.
+7. Tenant-scope all application reads, actions, API routes, Excel exports/imports and audit logs.
+8. Implement organization switching and platform admin organization creation, then tenant-aware user management.
+9. Negative tests with two organizations and a multi-member user with different roles, including cross-org ID guessing and forged import payloads.
+10. Deploy schema and app together only after tests pass; reconcile Seton totals against the backup.
