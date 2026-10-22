@@ -37,3 +37,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - `app/api/export/route.ts` scopes year, GL and fundraiser entry lookup and export branding. Finance rows are year-filtered; RLS remains mandatory.
 - `app/backup/actions.ts` blocks both legacy full-database backup and restore when multi-org mode is enabled, avoiding global destructive operations.
 - **Not complete:** import API, all page/actions, SECURITY DEFINER functions, financial-year close, safe tenant backup/restore, tenant-specific GL uniqueness and integration tests. Keep flag off and do not run cutover migrations.
+
+## Stage 2F — legacy privileged operation guards
+- `app/api/import/route.ts`: legacy service-role POST import is blocked while multi-org flag is enabled (HTTP 503); GET import history checks active membership role and organization.
+- `app/years/actions.ts`: legacy close-year RPC is blocked in multi-org mode until its database function is tenant-safe.
+- Existing Seton import and close-year behavior is unchanged with flag off.
+- **Not yet implemented:** tenant-safe replacement atomic importer and close-year function. Multi-org cutover remains prohibited.
