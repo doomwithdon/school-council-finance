@@ -6,7 +6,7 @@
 - **Multi-tenant isolation and organization management are not enabled.**
 - Existing Seton accounting remains single-organization until a coordinated cutover.
 
-- Stage 2B: `008_finance_tenant_link_guards.sql` authored, not applied by ChatGPT. It validates existing accounting references and adds triggers rejecting cross-organization financial-year, GL and fundraiser links. This is not a substitute for tenant RLS.\n\n## Stage 2A behavior
+- Stage 2B: `008_finance_tenant_link_guards.sql` authored, not applied by ChatGPT. It validates existing accounting references and adds triggers rejecting cross-organization financial-year, GL and fundraiser links. This is not a substitute for tenant RLS.\n\n- Stage 2C: `009_tenant_rls_cutover_DRAFT.sql` authored, NOT deployed. Adds membership-based authorization and tenant RLS, but deliberately blocks execution without a cutover setting. It must be reviewed and released only with tenant-aware application routes, RPCs, import/backup and tests.\n\n## Stage 2A behavior
 Adds `organization_id` to all accounting, year, GL, backup, audit, snapshot and import tables; tags legacy records as Seton; validates non-null tagging and creates lookup indexes. Temporary Seton defaults preserve existing inserts and must be removed during cutover.
 
 The migration is intentionally not a tenant-isolation release. Existing globally permissive RLS, unique keys, RPCs, import and restore routes still require replacement. **Do not onboard other organizations at this stage.**
