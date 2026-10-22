@@ -32,3 +32,26 @@ test("tenant GL migration remains approval gated",()=>{
  assert.match(s,/app\.enable_gl_key_cutover/);
  assert.match(s,/foreign key\(organization_id,gl_code\)/);
 });
+
+test("legacy global administration is disabled for multi-organization mode",()=>{
+ for(const [path,functions] of [
+  ["app/users/actions.ts",["addUser","updateUser","resetPassword","deleteUser"]],
+  ["app/gl-codes/actions.ts",["addGlCode","updateGlCode","deleteGlCode"]]
+ ]){
+  const s=read(path);
+  for(const name of functions){
+   const start=s.indexOf("export async function "+name+"(");
+   assert.ok(start>=0,name+" is missing");
+   assert.match(s.slice(start,start+250),/if\(multiOrgEnabled\(\)\)throw new Error\(/);
+  }
+ }
+});
+test("tenant import backups never copy another council's fundraisers",()=>{
+ const s=read("supabase/migrations/011_tenant_atomic_import_DRAFT.sql");
+ assert.match(s,/from fundraisers t where financial_year_id=p_financial_year and organization_id=p_organization/);
+});
+test("financial year labels can be reused only across different councils after gated migration",()=>{
+ const s=read("supabase/migrations/012_tenant_financial_year_keys_DRAFT.sql");
+ assert.match(s,/app\.enable_tenant_year_key_cutover/);
+ assert.match(s,/financial_years\(organization_id,label\)/);
+});
