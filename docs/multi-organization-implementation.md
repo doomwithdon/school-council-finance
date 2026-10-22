@@ -49,3 +49,8 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - Multi-org import POST remains blocked until a tenant-aware atomic database function replaces the legacy implementation.
 - This does not yet make the privileged RPC safe for multi-tenancy. The current RPC writes GL codes and finance rows without explicit tenant arguments.
 - Remaining: org-aware unique GL keys, tenant-scoped atomic import SQL, application binding, staging reconciliation and negative security tests.
+
+## Stage 2H — tenant GL key cutover draft
+- `010_tenant_gl_key_cutover_DRAFT.sql` changes the GL primary key to `(organization_id,code)` and replaces dependent foreign keys with composite tenant-safe foreign keys.
+- It is **gated and must not be run** until every caller that assumes `gl_codes(code)` is globally unique is updated, including atomic Excel import and GL management actions.
+- Not yet completed: tenant-specific year label constraints, atomic import replacement, backup restore, RLS cutover, tenant-scoped pages/actions, and end-to-end tests.
