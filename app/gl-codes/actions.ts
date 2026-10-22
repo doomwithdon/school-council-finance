@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { requireWriter } from "../../lib/auth";
+import { multiOrgEnabled } from "../../lib/organization";
 
 const clean=(v:FormDataEntryValue|null,n:number)=>String(v||"").trim().slice(0,n);
 
 export async function addGlCode(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {db,user}=await requireWriter();
  const code=clean(form.get("code"),40);
  const description=clean(form.get("description"),300);
@@ -19,6 +21,7 @@ export async function addGlCode(form:FormData){
 }
 
 export async function updateGlCode(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {db,user}=await requireWriter();
  const code=clean(form.get("code"),40);
  const description=clean(form.get("description"),300);
@@ -32,6 +35,7 @@ export async function updateGlCode(form:FormData){
 }
 
 export async function deleteGlCode(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {db,user}=await requireWriter();
  const code=clean(form.get("code"),40);
  if(!code)throw new Error("GL code is required");
