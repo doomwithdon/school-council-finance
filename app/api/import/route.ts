@@ -2,7 +2,7 @@ import {createHash} from "crypto";
 import {NextResponse} from "next/server";
 import {serverDb} from "../../../lib/supabase-server";
 import {admin} from "../../../lib/supabase-admin";
-import {multiOrgEnabled} from "../../../lib/organization";
+import {multiOrgEnabled,getOrganizationContext} from "../../../lib/organization";
 
 const arr=(v:any)=>Array.isArray(v)?v:[];
 const money=(v:any)=>Number.isFinite(Number(v))?Math.round(Number(v)*100)/100:0;
@@ -83,6 +83,16 @@ export async function POST(req:Request){
 
 export async function GET(){
  try{
+  if(multiOrgEnabled()){
+   const session=serverDb();
+   const {data:{user}}=await session.auth.getUser();
+   if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
+   const ctx=await getOrganizationContext(user.id);
+   if(!ctx||!["admin","treasurer"].includes(ctx.active.role))return NextResponse.json({error:"Read-only account"},{status:403});
+   const {data,error}=await session.from("import_runs").select("id,file_name,mode,status,counts,totals,warnings,created_at,financial_years(label)").eq("organization_id",ctx.active.id).order("created_at",{ascending:false}).limit(10);
+   if(error)throw error;
+   return NextResponse.json({runs:data||[]});
+  }
   const session=serverDb();const {data:{user}}=await session.auth.getUser();
   if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
   const {data:profile}=await session.from("profiles").select("role").eq("id",user.id).single();
