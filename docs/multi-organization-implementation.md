@@ -43,3 +43,9 @@ The migration is intentionally not a tenant-isolation release. Existing globally
 - `app/years/actions.ts`: legacy close-year RPC is blocked in multi-org mode until its database function is tenant-safe.
 - Existing Seton import and close-year behavior is unchanged with flag off.
 - **Not yet implemented:** tenant-safe replacement atomic importer and close-year function. Multi-org cutover remains prohibited.
+
+## Stage 2G — import destination read authorization
+- The legacy Excel import API now resolves the target financial year through the authenticated user's RLS-scoped Supabase session, rather than using service-role reads.
+- Multi-org import POST remains blocked until a tenant-aware atomic database function replaces the legacy implementation.
+- This does not yet make the privileged RPC safe for multi-tenancy. The current RPC writes GL codes and finance rows without explicit tenant arguments.
+- Remaining: org-aware unique GL keys, tenant-scoped atomic import SQL, application binding, staging reconciliation and negative security tests.
