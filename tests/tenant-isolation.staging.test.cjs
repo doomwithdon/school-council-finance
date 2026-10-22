@@ -33,8 +33,12 @@ test("two authenticated councils cannot read each other's financial data",async(
   const {data,error}=await who.db.from("financial_years").select("id").eq("organization_id",who.org).limit(1);
   assert.ifError(error);
   assert.ok(data?.length,"Both staging organizations must have a visible financial year");
+  who.seedYearId=data[0].id;
  }
  for(const [who,other] of [[a,b],[b,a]]){
+  const foreign=await who.db.from("financial_years").select("id").eq("id",other.seedYearId);
+  assert.ifError(foreign.error);
+  assert.deepEqual(foreign.data,[],"Foreign financial year ID must be hidden");
   for(const table of ["financial_years","gl_codes","budgets","actuals",
    "bank_transactions","cheques","fundraisers","fundraiser_entries",
    "budget_snapshots","database_backups","import_runs","audit_log"]){
