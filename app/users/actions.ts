@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireWriter } from "../../lib/auth";
 import { admin } from "../../lib/supabase-admin";
+import { multiOrgEnabled } from "../../lib/organization";
 
 const roles=["admin","treasurer","council"] as const;
 type Role=(typeof roles)[number];
@@ -14,6 +15,7 @@ function role(v:FormDataEntryValue|null):Role{
 }
 
 export async function addUser(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {user,profile,db}=await requireWriter();
  const email=String(form.get("email")||"").trim().toLowerCase();
  const fullName=String(form.get("full_name")||"").trim();
@@ -40,6 +42,7 @@ export async function addUser(form:FormData){
 }
 
 export async function updateUser(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {user,db}=await requireWriter();
  const id=String(form.get("id")||"");
  const newRole=role(form.get("role"));
@@ -56,6 +59,7 @@ export async function updateUser(form:FormData){
 }
 
 export async function resetPassword(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {user,db}=await requireWriter();
  const id=String(form.get("id")||"");
  const password=String(form.get("password")||"");
@@ -68,6 +72,7 @@ export async function resetPassword(form:FormData){
 }
 
 export async function deleteUser(form:FormData){
+ if(multiOrgEnabled())throw new Error("This legacy administration action is disabled until tenant-scoped authorization is implemented");
  const {user,db}=await requireWriter();
  const id=String(form.get("id")||"");
  if(!id)throw new Error("User is required");
